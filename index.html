@@ -68,6 +68,11 @@
   #clock{font-variant-numeric:tabular-nums;font-size:1.2rem}
   #lang2{background:transparent;border:1px solid rgba(255,255,255,.6);padding:3px 10px;font-size:.85rem;border-radius:999px;margin-left:auto}
   .center{text-align:center}
+  .counter{display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:center}
+  .counter .n{font-size:2.2rem;font-weight:800;color:var(--green);line-height:1}
+  .counter .l{font-size:.9rem;color:var(--muted);margin-top:4px}
+  .cats{margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:.86rem;color:var(--muted);text-align:center;line-height:1.7}
+  .cats b{color:var(--ink)}
   .score{font-size:3rem;font-weight:800;color:var(--indigo-d);line-height:1;margin:8px 0}
   .test{background:#fff4e5;border:1px solid #f5c37a;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:.92rem}
   footer{max-width:780px;margin:0 auto;padding:8px 16px 28px;text-align:center;color:var(--muted);font-size:.82rem}
@@ -144,7 +149,8 @@ const T = {
     noServerTitle: "Cannot reach the quiz server", noServerText: "Please check your internet connection and reload this page.",
     newsTitle: "Vigilance Bulletin 2026", newsText: "Read the Vigilance Cell's newsletter for this week: FAQs, do's and don'ts, and how to report a concern.",
     pledgeTitle: "Take the Integrity e-Pledge", pledgeText: "Take the pledge online on the Central Vigilance Commission's website.",
-    foot: "Organised by the Vigilance Cell, AIIMS Bhopal", locale: "en-IN"
+    foot: "Organised by the Vigilance Cell, AIIMS Bhopal", locale: "en-IN",
+    cToday: "colleagues have taken today's quiz", cWeek: "have taken part so far this week", cJoin: "Join them today.", cDone: "You are part of it. See you tomorrow!"
   },
   hi: {
     switchTo: "English", title: "दैनिक सतर्कता प्रश्नोत्तरी",
@@ -180,7 +186,8 @@ const T = {
     noServerTitle: "प्रश्नोत्तरी सर्वर से संपर्क नहीं हो पा रहा", noServerText: "कृपया इंटरनेट कनेक्शन जाँचें और यह पेज पुनः लोड करें।",
     newsTitle: "सतर्कता बुलेटिन 2026", newsText: "इस सप्ताह का सतर्कता प्रकोष्ठ का समाचार-पत्र पढ़ें: सामान्य प्रश्न, क्या करें-क्या न करें, और शिकायत कैसे करें।",
     pledgeTitle: "ई-सत्यनिष्ठा प्रतिज्ञा लें", pledgeText: "केंद्रीय सतर्कता आयोग की वेबसाइट पर ऑनलाइन सत्यनिष्ठा प्रतिज्ञा लें।",
-    foot: "आयोजक: सतर्कता प्रकोष्ठ, एम्स भोपाल", locale: "hi-IN"
+    foot: "आयोजक: सतर्कता प्रकोष्ठ, एम्स भोपाल", locale: "hi-IN",
+    cToday: "सहकर्मी आज की प्रश्नोत्तरी दे चुके हैं", cWeek: "इस सप्ताह अब तक भाग ले चुके हैं", cJoin: "आज आप भी जुड़ें।", cDone: "आप भी इसमें शामिल हैं। कल फिर मिलेंगे!"
   }
 };
 
@@ -242,6 +249,19 @@ function linksBlock(feature){
 }
 const testBanner = () => TEST ? `<div class="test"><b>TEST MODE</b>: attempts are tagged TEST and excluded from results.${TEST.testDay ? " Day " + esc(TEST.testDay) + "." : ""}</div>` : "";
 
+function counterCard(after){
+  const c = STATUS && STATUS.counts;
+  if (!c) return "";
+  const nf = n => Number(n || 0).toLocaleString(t("locale"));
+  const cats = (STATUS.categories || CATEGORIES_FALLBACK).filter(k => c.byCategory && c.byCategory[k])
+    .map(k => `${esc(LANG === "hi" && CAT_HI[k] ? CAT_HI[k] : k)} <b>${nf(c.byCategory[k])}</b>`).join(" · ");
+  return `<div class="card"><div class="counter">
+      <div><div class="n">${nf(c.today)}</div><div class="l">${t("cToday")}</div></div>
+      <div><div class="n">${nf(c.week)}</div><div class="l">${t("cWeek")}</div></div>
+    </div>${cats ? `<div class="cats">${cats}</div>` : ""}
+    <p class="muted center" style="margin:10px 0 0"><b>${t(after ? "cDone" : "cJoin")}</b></p></div>`;
+}
+
 function fmtDay(n){
   const d0 = new Date(STATUS.date + "T12:00:00+05:30");
   const d = new Date(d0.getTime() + (n - STATUS.day) * 86400000);
@@ -268,6 +288,7 @@ function screenHome(msg){
     <p class="muted" style="margin:0">${esc(t("intro", { from: fmtDay(1), to: fmtDay(s.totalDays), open: s.openTime, close: s.closeTime }))}</p>
     ${!open ? `<p style="margin:10px 0 0"><b>${esc(srvMsg(s))}</b></p>` : ""}
   </div>
+  ${counterCard(false)}
   ${open ? `
   <div class="card">
     <h2>${t("before")}</h2>
@@ -398,6 +419,7 @@ function screenDone(a, r, timeUp){
       ${r.late ? `<p class="muted">${t("lateNote")}</p>` : ""}
       <p style="margin:6px 0 0">${last ? t("lastDay") : t("comeBack")}</p>
     </div>
+    ${counterCard(true)}
     ${linksBlock(true)}`;
 }
 
@@ -417,6 +439,7 @@ async function submit(a, timeUp){
     if (!r.ok) throw new Error(r.message || "submit failed");
     store.del(K_ATT);
     screenDone(a, r, timeUp);
+    api("GET").then(st => { STATUS = st; if (current) current(); }).catch(() => {});
   }catch(e){
     submitting = false;
     screenRetry(a, timeUp);
