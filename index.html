@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preventive Vigilance Quiz</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#1c2430; --muted:#5b6675; --line:#dde3ea;
+    --brand:#0b4f71; --brand-ink:#ffffff; --accent:#e8f1f6; --warn:#b42318; --ok:#1a7f37;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif}
+  header{background:var(--brand);color:var(--brand-ink);padding:18px 16px}
+  header h1{margin:0;font-size:1.25rem}
+  header p{margin:2px 0 0;opacity:.85;font-size:.9rem}
+  main{max-width:760px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:14px}
+  h2{font-size:1.1rem;margin:0 0 10px}
+  label{display:block;font-weight:600;font-size:.92rem;margin:12px 0 4px}
+  input[type=text]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit}
+  input[type=text]:focus{outline:2px solid var(--brand);border-color:transparent}
+  ul.rules{padding-left:20px;margin:8px 0} ul.rules li{margin:4px 0}
+  button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:12px 18px;cursor:pointer;background:var(--brand);color:var(--brand-ink)}
+  button.secondary{background:var(--accent);color:var(--brand)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .err{color:var(--warn);font-size:.9rem;margin-top:8px}
+  .banner{background:#fff4e5;border:1px solid #f5c37a;border-radius:8px;padding:12px;margin-bottom:14px;font-size:.92rem}
+  .q{counter-increment:q}
+  .q h3{font-size:1rem;margin:0 0 10px;font-weight:600}
+  .q h3::before{content:"Q" counter(q) ". ";color:var(--brand)}
+  .opt{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:6px 0;cursor:pointer}
+  .opt:hover{background:var(--accent)}
+  .opt input{margin-top:4px;flex:none}
+  .opt.sel{border-color:var(--brand);background:var(--accent)}
+  #qs{counter-reset:q}
+  #timerbar{position:sticky;top:0;z-index:5;background:var(--brand);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:10px 16px;font-weight:600}
+  #timerbar.low{background:var(--warn)}
+  #clock{font-variant-numeric:tabular-nums;font-size:1.15rem}
+  .center{text-align:center}
+  .big{font-size:2.2rem;margin:4px 0}
+  .muted{color:var(--muted);font-size:.9rem}
+  .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  footer{text-align:center;color:var(--muted);font-size:.8rem;padding:20px 16px}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="t-title"></h1>
+  <p id="t-sub"></p>
+</header>
+<div id="timerbar" hidden><span id="progress">0 / 15 answered</span><span id="clock">15:00</span></div>
+<main id="app"></main>
+<footer>Questions based on the CVC Vigilance Manual 2026</footer>
+
+<script>
+/* =====================================================================
+   CONFIGURATION — the only part you need to edit
+   ===================================================================== */
+const CONFIG = {
+  title: "Preventive Vigilance Quiz",
+  subtitle: "Vigilance Cell, AIIMS Bhopal",
+  durationMinutes: 15,
+
+  // Quiz window in IST. Set both to null to keep the quiz always open.
+  opensAt:  null,   // e.g. "2026-10-28T10:00:00+05:30"
+  closesAt: null,   // e.g. "2026-10-28T17:00:00+05:30"
+
+  // Paste the Google Form pre-filled link here (see setup steps).
+  prefilledLink: "https://docs.google.com/forms/d/e/1FAIpQLSdshKm6HYcbGl5qwbDysXOWRS7nlYJ3WxAecJLWzdiieNDboA/viewform?usp=pp_url&entry.1095360073=NAME&entry.1083005568=EMPID&entry.861804148=DEPT&entry.2140766290=DESIG&entry.536590907=ANSWERS&entry.189205283=START&entry.2098712247=SECONDS&entry.681497791=MODE&entry.870995854=TABS"
+};
+/* ===================================================================== */
+
+// Placeholder words typed into the pre-filled link, one per form field
+const TOKENS = ["NAME","EMPID","DEPT","DESIG","ANSWERS","START","SECONDS","MODE","TABS"];
+
+// Questions in fixed order; the answer key is NOT stored in this page.
+const QUESTIONS = [
+ {t:"Whose duty is it to implement preventive vigilance?",
+  o:{A:"Only the Chief Vigilance Officer",B:"Only the CBI",C:"Only the Central Vigilance Commission",D:"The management as a whole - in fact, every official"}},
+ {t:"According to the Manual, corruption is often a failure of:",
+  o:{A:"Only one dishonest individual",B:"The system, controls and organisation culture, not just an individual",C:"Only the general public",D:"Only the technology used"}},
+ {t:"Simplifying and standardising rules and procedures helps because it:",
+  o:{A:"Increases the number of approvals needed",B:"Gives officials more personal discretion",C:"Reduces discretion and arbitrariness in decision making",D:"Makes rules harder to understand"}},
+ {t:"The Committee on Prevention of Corruption, which gave early recommendations on preventive measures, is commonly known as:",
+  o:{A:"The Lokpal Committee",B:"The Finance Commission",C:"The Santhanam Committee",D:"The Pay Commission"}},
+ {t:"Why should action against misconduct be quick and time-bound?",
+  o:{A:"Speed is not important in such matters",B:"Delay protects honest officials",C:"Quick action is useful only in court cases",D:"Delays encourage others to take the risk, while prompt action deters them"}},
+ {t:"Which method gives stronger protection than a user ID and password alone?",
+  o:{A:"A shorter password",B:"Leaving the system logged in",C:"OTP or multi-factor authentication",D:"Sharing the login with the supervisor"}},
+ {t:"For official correspondence, which email ID should be used?",
+  o:{A:"The organisation's official email ID (such as gov.in or nic.in)",B:"A personal Gmail or Yahoo ID",C:"A friend's email ID",D:"Any free email service"}},
+ {t:"What do 'audit trails' in IT systems record?",
+  o:{A:"Only the colour of the screen",B:"Digital footprints such as user login, access duration and time stamps",C:"Only the price of the computer",D:"Nothing useful"}},
+ {t:"What is the purpose of the 'maker-checker' concept?",
+  o:{A:"To let one person do and approve everything",B:"To speed up work by skipping checks",C:"To reduce errors, fraud and misuse of authority in critical processes",D:"To give access to every employee"}},
+ {t:"What is an Integrity Pact?",
+  o:{A:"A pact between employees to share profits",B:"A private agreement with one favoured bidder",C:"A document that allows discounts",D:"A written agreement between the organisation and all bidders not to indulge in bribery or collusion"}},
+ {t:"Who monitors the implementation of the Integrity Pact?",
+  o:{A:"The bidder himself",B:"Independent External Monitors (IEMs)",C:"The tender opening clerk",D:"Nobody - it is automatic"}},
+ {t:"How does e-procurement support preventive vigilance?",
+  o:{A:"It increases face-to-face dealings with bidders",B:"It reduces personal interface and discretion and leaves an electronic record",C:"It removes all records of the process",D:"It allows tenders to be accepted after the deadline"}},
+ {t:"A conflict of interest arises when:",
+  o:{A:"An official's personal interests could compromise his or her official judgment or decisions",B:"An official works overtime",C:"An official is transferred",D:"An official takes casual leave"}},
+ {t:"An 'appearance of conflict' exists when:",
+  o:{A:"The file is very thick",B:"The meeting is held late",C:"The official is on leave",D:"A reasonable person would question the official's impartiality in the matter"}},
+ {t:"Under the PIDPI Resolution (whistle blower mechanism), which body is the 'Designated Agency' to receive complaints?",
+  o:{A:"The Central Vigilance Commission",B:"The Press Council of India",C:"The local newspaper",D:"The office union"}}
+];
+
+const TEST = new URLSearchParams(location.search).get("test") === "1";
+const KEY_STATE = "vq_state_v1", KEY_DONE = "vq_done_v1";
+const app = document.getElementById("app");
+document.getElementById("t-title").textContent = CONFIG.title + (TEST ? " (TEST MODE)" : "");
+document.getElementById("t-sub").textContent = CONFIG.subtitle;
+
+/* ---------- storage helpers (never let storage errors break the quiz) ---------- */
+const store = {
+  get(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function shuffle(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
+
+/* ---------- parse the Google Form pre-filled link ---------- */
+function parseForm(){
+  try{
+    const u = new URL(CONFIG.prefilledLink);
+    const action = u.origin + u.pathname.replace(/\/viewform.*$/, "/formResponse");
+    const map = {};
+    u.searchParams.forEach((v,k)=>{ if(k.startsWith("entry.")) map[v.trim()] = k; });
+    const missing = TOKENS.filter(t => !map[t]);
+    return { action, map, missing };
+  }catch(e){ return { action:null, map:{}, missing:TOKENS.slice() }; }
+}
+const FORM = parseForm();
+
+/* ---------- screens ---------- */
+function screenIntro(msg){
+  document.getElementById("timerbar").hidden = true;
+  const now = Date.now();
+  const opens = CONFIG.opensAt ? Date.parse(CONFIG.opensAt) : null;
+  const closes = CONFIG.closesAt ? Date.parse(CONFIG.closesAt) : null;
+  let banner = "";
+  if (FORM.missing.length) banner += `<div class="banner"><b>Setup incomplete:</b> the pre-filled link is missing ${FORM.missing.join(", ")}. Submissions will not be recorded.</div>`;
+  if (!TEST && opens && now < opens) return screenMsg("Quiz not open yet", `The quiz opens on <b>${new Date(opens).toLocaleString("en-IN")}</b>. Please come back then.`);
+  if (!TEST && closes && now > closes) return screenMsg("Quiz closed", "The quiz window has closed. Thank you for your interest.");
+  if (!TEST && store.get(KEY_DONE)) return screenMsg("Already submitted", "A response has already been submitted from this device. Only one attempt is allowed.");
+
+  app.innerHTML = `${banner}
+  <div class="card">
+    <h2>Before you begin</h2>
+    <ul class="rules">
+      <li>${QUESTIONS.length} multiple-choice questions, 1 mark each, no negative marking.</li>
+      <li>You have <b>${CONFIG.durationMinutes} minutes</b>. The timer starts when you press <b>Start quiz</b> and cannot be paused.</li>
+      <li>Your answers are submitted automatically when time runs out.</li>
+      <li>Only one attempt is allowed. Switching away from this page is recorded.</li>
+      <li>Results will be announced by the Vigilance Cell after the quiz closes.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h2>Your details</h2>
+    <label for="f-name">Full name</label><input type="text" id="f-name" autocomplete="name">
+    <label for="f-emp">Employee ID</label><input type="text" id="f-emp">
+    <label for="f-dept">Department / Section</label><input type="text" id="f-dept">
+    <label for="f-desig">Designation</label><input type="text" id="f-desig">
+    <div class="err" id="f-err">${msg ? esc(msg) : ""}</div>
+    <div class="row"><button id="b-start">Start quiz</button></div>
+  </div>`;
+  document.getElementById("b-start").onclick = () => {
+    const d = {
+      name: document.getElementById("f-name").value.trim(),
+      emp: document.getElementById("f-emp").value.trim(),
+      dept: document.getElementById("f-dept").value.trim(),
+      desig: document.getElementById("f-desig").value.trim()
+    };
+    if (!d.name || !d.emp || !d.dept || !d.desig) { document.getElementById("f-err").textContent = "Please fill in all four fields."; return; }
+    const state = {
+      details: d,
+      start: Date.now(),
+      order: shuffle(QUESTIONS.map((_,i)=>i)),
+      optOrder: QUESTIONS.map(()=>shuffle(["A","B","C","D"])),
+      answers: QUESTIONS.map(()=>null),
+      tabs: 0
+    };
+    store.set(KEY_STATE, state);
+    screenQuiz(state);
+  };
+}
+
+function screenMsg(title, html){
+  document.getElementById("timerbar").hidden = true;
+  app.innerHTML = `<div class="card center"><h2>${title}</h2><p>${html}</p></div>`;
+}
+
+let tick = null, submitting = false;
+function screenQuiz(state){
+  const bar = document.getElementById("timerbar"); bar.hidden = false;
+  app.innerHTML = `<div id="qs"></div>
+    <div class="card"><div class="row" style="margin-top:0"><button id="b-submit">Submit answers</button></div>
+    <div class="err" id="s-err"></div></div>`;
+  const qs = document.getElementById("qs");
+  state.order.forEach(qi => {
+    const q = QUESTIONS[qi];
+    const div = document.createElement("div"); div.className = "card q";
+    div.innerHTML = `<h3>${esc(q.t)}</h3>` + state.optOrder[qi].map((L,k) => {
+      const id = `q${qi}${L}`, chk = state.answers[qi] === L ? "checked" : "";
+      return `<label class="opt ${chk?"sel":""}" for="${id}"><input type="radio" name="q${qi}" id="${id}" value="${L}" ${chk}><span><b>${"abcd"[k]})</b> ${esc(q.o[L])}</span></label>`;
+    }).join("");
+    div.addEventListener("change", e => {
+      state.answers[qi] = e.target.value;
+      div.querySelectorAll(".opt").forEach(o => o.classList.toggle("sel", o.querySelector("input").checked));
+      store.set(KEY_STATE, state); updateProgress(state);
+    });
+    qs.appendChild(div);
+  });
+  document.getElementById("b-submit").onclick = () => {
+    const left = state.answers.filter(a=>!a).length;
+    if (left && !confirm(`You have ${left} unanswered question(s). Submit anyway?`)) return;
+    submit(state, "MANUAL");
+  };
+  document.onvisibilitychange = () => { if (document.hidden && !submitting) { state.tabs++; store.set(KEY_STATE, state); } };
+  updateProgress(state);
+  const end = state.start + CONFIG.durationMinutes*60000;
+  const clock = document.getElementById("clock");
+  const step = () => {
+    const ms = end - Date.now();
+    if (ms <= 0) { clock.textContent = "00:00"; clearInterval(tick); submit(state, "TIMEOUT"); return; }
+    const s = Math.ceil(ms/1000);
+    clock.textContent = String(Math.floor(s/60)).padStart(2,"0") + ":" + String(s%60).padStart(2,"0");
+    bar.classList.toggle("low", s <= 60);
+  };
+  clearInterval(tick); step(); tick = setInterval(step, 500);
+}
+
+function updateProgress(state){
+  const n = state.answers.filter(Boolean).length;
+  document.getElementById("progress").textContent = `${n} / ${QUESTIONS.length} answered`;
+}
+
+async function submit(state, mode){
+  if (submitting) return; submitting = true; clearInterval(tick);
+  document.onvisibilitychange = null;
+  const btn = document.getElementById("b-submit"); if (btn) btn.disabled = true;
+  const seconds = Math.min(Math.round((Date.now()-state.start)/1000), CONFIG.durationMinutes*60);
+  const values = {
+    NAME: state.details.name, EMPID: state.details.emp, DEPT: state.details.dept, DESIG: state.details.desig,
+    ANSWERS: state.answers.map(a => a || "-").join(""),
+    START: new Date(state.start).toLocaleString("en-IN", {timeZone:"Asia/Kolkata"}),
+    SECONDS: String(seconds),
+    MODE: TEST ? "TEST-" + mode : mode,
+    TABS: String(state.tabs)
+  };
+  const body = new URLSearchParams();
+  TOKENS.forEach(t => { if (FORM.map[t]) body.append(FORM.map[t], values[t]); });
+  try{
+    if (!FORM.action || FORM.missing.length) throw new Error("form not configured");
+    await fetch(FORM.action, { method:"POST", mode:"no-cors", body });
+    if (!TEST) store.set(KEY_DONE, { at: Date.now(), emp: state.details.emp });
+    store.del(KEY_STATE);
+    document.getElementById("timerbar").hidden = true;
+    app.innerHTML = `<div class="card center">
+      <div class="big" style="color:var(--ok)">&#10003;</div>
+      <h2>Your response has been recorded</h2>
+      <p>${esc(state.details.name)} &middot; ${esc(state.details.emp)}<br>
+      <span class="muted">Submitted ${new Date().toLocaleString("en-IN",{timeZone:"Asia/Kolkata"})}${mode==="TIMEOUT"?" (time up)":""}</span></p>
+      <p>Results will be announced by the Vigilance Cell after the quiz closes.</p></div>`;
+  }catch(e){
+    submitting = false;
+    document.getElementById("timerbar").hidden = true;
+    app.innerHTML = `<div class="card center"><h2>Could not submit</h2>
+      <p>Your answers are saved on this device. Check your internet connection and try again.</p>
+      <div class="row" style="justify-content:center"><button id="b-retry">Retry submission</button></div></div>`;
+    document.getElementById("b-retry").onclick = () => submit(state, mode);
+  }
+}
+
+/* ---------- start: resume an attempt in progress after a refresh ---------- */
+(function init(){
+  const s = store.get(KEY_STATE);
+  if (s && s.start && !(store.get(KEY_DONE) && !TEST)) {
+    if (Date.now() - s.start >= CONFIG.durationMinutes*60000) { app.innerHTML = ""; submit(s, "TIMEOUT"); }
+    else screenQuiz(s);
+  } else screenIntro();
+})();
+</script>
+</body>
+</html>
