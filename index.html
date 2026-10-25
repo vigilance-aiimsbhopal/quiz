@@ -118,7 +118,7 @@ const T = {
   en: {
     switchTo: "हिंदी", title: "Daily Vigilance Quiz",
     pillOpen: "Day {d} of {n} · open till {close} IST", pillClosed: "Closed now",
-    intro: "A new set of 10 questions every day from {from} to {to}, {open}–{close} IST. Take it every day: prizes depend on your total across all days.",
+    intro: "A new set of 10 questions every day from {from} to {to}, {open}–{close} IST (Day 1 opens at {d1}, after the Integrity Pledge). Take it every day: prizes depend on your total across all days.",
     before: "Before you begin",
     rules: ["10 multiple-choice questions, 1 mark each, no negative marking.",
             "You have <b>{m} minutes</b>. The timer starts when you press <b>Start today's quiz</b> and cannot be paused.",
@@ -155,7 +155,7 @@ const T = {
   hi: {
     switchTo: "English", title: "दैनिक सतर्कता प्रश्नोत्तरी",
     pillOpen: "दिवस {d} (कुल {n}) · {close} बजे (IST) तक खुली", pillClosed: "अभी बंद है",
-    intro: "{from} से {to} तक प्रतिदिन 10 नए प्रश्न, {open}–{close} बजे (IST)। प्रतिदिन भाग लें: पुरस्कार सभी दिनों के कुल अंकों पर आधारित होंगे।",
+    intro: "{from} से {to} तक प्रतिदिन 10 नए प्रश्न, {open}–{close} बजे (IST) (पहले दिन, सत्यनिष्ठा प्रतिज्ञा के बाद {d1} बजे से)। प्रतिदिन भाग लें: पुरस्कार सभी दिनों के कुल अंकों पर आधारित होंगे।",
     before: "आरंभ करने से पहले",
     rules: ["10 बहुविकल्पीय प्रश्न, प्रत्येक 1 अंक, कोई ऋणात्मक अंकन नहीं।",
             "आपके पास <b>{m} मिनट</b> हैं। <b>आज की प्रश्नोत्तरी आरंभ करें</b> दबाते ही टाइमर शुरू हो जाएगा और इसे रोका नहीं जा सकेगा।",
@@ -285,7 +285,7 @@ function screenHome(msg){
   <div class="card">
     <h1>${t("title")}</h1>
     <p style="margin:0 0 8px">${pill}</p>
-    <p class="muted" style="margin:0">${esc(t("intro", { from: fmtDay(1), to: fmtDay(s.totalDays), open: s.openTime, close: s.closeTime }))}</p>
+    <p class="muted" style="margin:0">${esc(t("intro", { from: fmtDay(1), to: fmtDay(s.totalDays), open: s.openTime, close: s.closeTime, d1: s.day1OpenTime || "15:30" }))}</p>
     ${!open ? `<p style="margin:10px 0 0"><b>${esc(srvMsg(s))}</b></p>` : ""}
   </div>
   ${counterCard(false)}
